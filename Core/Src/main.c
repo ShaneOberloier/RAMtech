@@ -28,6 +28,8 @@
 #include "tilt.h"
 #include "custom_chars.h"
 #include "signal_input.h"
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,12 +60,12 @@ typedef enum {
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc;
 
-I2C_HandleTypeDef hi2c1;
+//I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+char tx_buffer[64];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,7 +73,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC_Init(void);
-static void MX_I2C1_Init(void);
+//static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -112,23 +114,23 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_ADC_Init();
-  MX_I2C1_Init();
+  //MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-   RGB_LCD_HandleTypeDef lcd;
-   lcd.hi2c = &hi2c1;
-   lcd.rgb_addr = 0x62 << 1; // RGB controller address (8-bit)
-   lcd.cols = 16;
-   lcd.rows = 2;
+   //RGB_LCD_HandleTypeDef lcd;
+   //lcd.hi2c = &hi2c1;
+   //lcd.rgb_addr = 0x62 << 1; // RGB controller address (8-bit)
+   //lcd.cols = 16;
+   //lcd.rows = 2;
 
    // Initialize LCD
-   RGB_LCD_Init(&lcd);
+   //RGB_LCD_Init(&lcd);
    ADC_ButtonInit();
    tilt_init();
    signal_input_init();
 
    // Set a color for the backlight
-   RGB_LCD_SetRGB(&lcd, 0, 128, 255); // Light blue
-   RGB_LCD_Clear(&lcd);
+   //RGB_LCD_SetRGB(&lcd, 0, 128, 255); // Light blue
+   //RGB_LCD_Clear(&lcd);
 
    MenuState currentMenu = MENU_MAIN;
    Button last_click = NONE;
@@ -150,11 +152,13 @@ int main(void)
 
   			switch (currentMenu) {
   				case MENU_MAIN:
-  					RGB_LCD_Clear(&lcd);
+  					sprintf(tx_buffer, "Main Menu\r\n");
+  					HAL_UART_Transmit(&huart2, (uint8_t*)tx_buffer, strlen(tx_buffer), HAL_MAX_DELAY);
+  					//RGB_LCD_Clear(&lcd);
 
   					if (flip == false){
-  						RGB_LCD_SetCursor(&lcd, 0, 0);
-  						RGB_LCD_Print(&lcd, "MAIN MENU");
+  						//RGB_LCD_SetCursor(&lcd, 0, 0);
+  						//RGB_LCD_Print(&lcd, "MAIN MENU");
   					}
   					else if(flip == true){
   						// flip text
@@ -167,13 +171,15 @@ int main(void)
 
   				case MENU_SENSOR_RTD: {
   					t_temp = rtd_read_temperature_f();
-  					RGB_LCD_Clear(&lcd);
+  					sprintf(tx_buffer, "Temp = %u\r\n", (uint8_t)t_temp);
+  					HAL_UART_Transmit(&huart2, (uint8_t*)tx_buffer, strlen(tx_buffer), HAL_MAX_DELAY);
+  					//RGB_LCD_Clear(&lcd);
 
   					if (flip == false){
-  						RGB_LCD_SetCursor(&lcd, 0, 0);
-  						RGB_LCD_Printf(&lcd, "TEMP: %.0f F", t_temp);
-  						RGB_LCD_SetCursor(&lcd, 0, 1);
-  						RGB_LCD_Print(&lcd,"HIT LEFT TO EXIT");
+  						//RGB_LCD_SetCursor(&lcd, 0, 0);
+  						//RGB_LCD_Printf(&lcd, "TEMP: %.0f F", t_temp);
+  						//RGB_LCD_SetCursor(&lcd, 0, 1);
+  						//RGB_LCD_Print(&lcd,"HIT LEFT TO EXIT");
   					}
   					else if(flip == true){
   						// flip text
@@ -186,12 +192,14 @@ int main(void)
 
   				case MENU_SIGNAL_INPUT: {
   					freq = signal_input_measure_frequency();
-  					RGB_LCD_Clear(&lcd);
+  					sprintf(tx_buffer, "Freq = %u\r\n", (uint8_t)freq);
+  					HAL_UART_Transmit(&huart2, (uint8_t*)tx_buffer, strlen(tx_buffer), HAL_MAX_DELAY);
+  					//RGB_LCD_Clear(&lcd);
   					if (flip == false){
-  						RGB_LCD_SetCursor(&lcd, 0, 0);
-  						RGB_LCD_Printf(&lcd, "FREQ: %.0f Hz", freq);
-  						RGB_LCD_SetCursor(&lcd, 0, 1);
-  						RGB_LCD_Print(&lcd,"HIT LEFT TO EXIT");
+  						//RGB_LCD_SetCursor(&lcd, 0, 0);
+  						//RGB_LCD_Printf(&lcd, "FREQ: %.0f Hz", freq);
+  						//RGB_LCD_SetCursor(&lcd, 0, 1);
+  						//RGB_LCD_Print(&lcd,"HIT LEFT TO EXIT");
   					}
   					else if(flip == true){
   						// flip text
@@ -273,7 +281,7 @@ static void MX_ADC_Init(void)
   hadc.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
   hadc.Init.Resolution = ADC_RESOLUTION_12B;
   hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   hadc.Init.LowPowerAutoWait = ADC_AUTOWAIT_DISABLE;
   hadc.Init.LowPowerAutoPowerOff = ADC_AUTOPOWEROFF_DISABLE;
@@ -298,6 +306,7 @@ static void MX_ADC_Init(void)
   {
     Error_Handler();
   }
+
   /* USER CODE BEGIN ADC_Init 2 */
 
   /* USER CODE END ADC_Init 2 */
@@ -319,19 +328,19 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 1 */
 
   /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
+  //hi2c1.Instance = I2C1;
+  //hi2c1.Init.ClockSpeed = 100000;
+  //hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  //hi2c1.Init.OwnAddress1 = 0;
+  //hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  //hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  //hi2c1.Init.OwnAddress2 = 0;
+  //hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  //hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  //if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  //{
+  //  Error_Handler();
+  //}
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */

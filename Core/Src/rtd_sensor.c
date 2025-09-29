@@ -19,6 +19,14 @@ float rtd_read_temperature_f(void)
 
 	uint32_t sum = 0;
 
+	ADC_ChannelConfTypeDef sConfig = {0};
+	sConfig.Channel = ADC_CHANNEL_1;
+	sConfig.Rank = ADC_REGULAR_RANK_1;
+	sConfig.SamplingTime = ADC_SAMPLETIME_4CYCLES;
+	if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
+	{
+	  Error_Handler();
+	}
     HAL_ADC_Start(&hadc);
     HAL_ADC_PollForConversion(&hadc, HAL_MAX_DELAY);
 
@@ -32,32 +40,6 @@ float rtd_read_temperature_f(void)
 
     // Calculate average raw ADC value
     float avg_raw = sum / 10.0f;
-
-    // Convert to voltage (assuming 3.3V ref and 12-bit ADC)
-    float voltage = (VCC * avg_raw) / 4095.0f;
-
-    // --- Step 1: Voltage -> Resistance ---
-    if (voltage <= 0.0f || voltage >= VCC) {
-        return -999.9f; // error: invalid voltage
-    }
-    float Rrtd = RREF * (VCC - voltage) / voltage;
-
-    // --- Step 2: Resistance -> Temperature ---
-    if (Rrtd >= R0) {
-        // 0 to 850 °C: closed-form inverse
-        float ratio = Rrtd / R0;
-        float disc = (A * A) - (4.0f * B * (1.0f - ratio));
-        if (disc < 0.0f) return -999.9f;
-        return (-A + sqrtf(disc)) / (2.0f * B);
-    } else {
-        // Below 0 °C: use Newton-Raphson iteration
-        float T = -50.0f; // initial guess
-        for (int i = 0; i < 20; i++) {
-            float f  = R0 * (1 + A*T + B*T*T + C*(T-100.0f)*T*T*T) - Rrtd;
-            float df = R0 * (A + 2*B*T + 3*C*(T-100.0f)*T*T + C*T*T*T);
-            T -= f / df; // returning temp in C
-        }
-        float temperatureInF = (T * 1.8f) + 32;
-        return temperatureInF;
-    }
+    float temperatureInF = 0.219*avg_raw - 344;
+    return temperatureInF;
 }

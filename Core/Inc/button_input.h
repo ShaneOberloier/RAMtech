@@ -11,7 +11,6 @@ typedef enum {
 	NONE
 } Button;
 
-void ADC_ButtonInit(void);
-Button GetButton(void);
+Button GetButton(uint32_t adcBuffer[]);
 
 #endif

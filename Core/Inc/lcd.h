@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 #define LCD_ADDR       (0x3E << 1) // 8-bit format for HAL
-#define RGB_ADDR       (0x60 << 1) // RGB controller address (PCA9633)
+#define RGB_ADDR       (0x2D << 1) // RGB controller address (PCA9633)
 #define REG_ADDR       0x00
 #define DATA_ADDR      0x40
 
@@ -28,11 +28,11 @@ typedef struct {
 } RGB_LCD_HandleTypeDef;
 
 void RGB_LCD_Init(RGB_LCD_HandleTypeDef *lcd);
-void RGB_LCD_Clear(RGB_LCD_HandleTypeDef *lcd);
-void RGB_LCD_SetCursor(RGB_LCD_HandleTypeDef *lcd, uint8_t col, uint8_t row);
-void RGB_LCD_Print(RGB_LCD_HandleTypeDef *lcd, const char *str);
+void RGB_LCD_ClearScreen(RGB_LCD_HandleTypeDef *lcd);
+void RGB_LCD_SetMemoryPointerAtScreenPosition(RGB_LCD_HandleTypeDef *lcd, uint8_t col, uint8_t row);
+void RGB_LCD_WriteStringToMemory(RGB_LCD_HandleTypeDef *lcd, const char *str);
 void RGB_LCD_SetRGB(RGB_LCD_HandleTypeDef *lcd, uint8_t r, uint8_t g, uint8_t b);
-void RGB_LCD_Printf(RGB_LCD_HandleTypeDef *lcd, const char *fmt, ...);
+void RGB_LCD_WriteFormattedStringToMemory(RGB_LCD_HandleTypeDef *lcd, const char *fmt, ...);
 
 
 #endif // __RGB_LCD_H__

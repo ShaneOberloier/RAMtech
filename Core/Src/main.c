@@ -17,7 +17,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-
+#include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -58,6 +58,7 @@ typedef enum {
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc;
+DMA_HandleTypeDef hdma_adc;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -65,11 +66,17 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
+// This is the buffer we store our ADC readings in. Each value contains one reading.
+// We can adjust the size of this buffer to allow us to store more data if desired.
+// Right now, it just has one number, for one channel.
+uint32_t adcBuffer[1];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC_Init(void);
 static void MX_I2C1_Init(void);
@@ -111,6 +118,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_ADC_Init();
   MX_I2C1_Init();
@@ -123,13 +131,12 @@ int main(void)
 
    // Initialize LCD
    RGB_LCD_Init(&lcd);
-   ADC_ButtonInit();
    tilt_init();
    signal_input_init();
 
    // Set a color for the backlight
-   RGB_LCD_SetRGB(&lcd, 0, 128, 255); // Light blue
-   RGB_LCD_Clear(&lcd);
+   RGB_LCD_SetRGB(&lcd, 0, 177, 255); // Light blue
+   RGB_LCD_ClearScreen(&lcd);
 
    // Initialize state and measurement variables
    MenuState currentMenu = MENU_MAIN;
@@ -137,6 +144,13 @@ int main(void)
    float t_temp;
    float freq;
    bool flip;
+
+   // Enable ADC with DMA reading one word (32bits) at a time. It will then be stored in the adcBuffer variable.
+   // We can adjust this function as necessary to implement more ADC reading functionality.
+   // For example, if we change the second argument to 2, then we would take two different readings.
+   // This could be useful if we wanted to implement an additional ADC channel.
+   HAL_ADC_Start_DMA(&hadc, adcBuffer, 1);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -147,7 +161,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  // read the latest button push
-  	  last_click = GetButton();
+  	  last_click = GetButton(adcBuffer);
 
   	  // check the orientation of the device
   	  //flip = detect_tilt();
@@ -157,12 +171,12 @@ int main(void)
   			switch (currentMenu) {
   				case MENU_MAIN:
   					// clear display
-  					RGB_LCD_Clear(&lcd);
+  					RGB_LCD_ClearScreen(&lcd);
 
   					if (flip == false){
   						// print right side up text for the main menu
-  						RGB_LCD_SetCursor(&lcd, 0, 0);
-  						RGB_LCD_Print(&lcd, "MAIN MENU");
+  						RGB_LCD_SetMemoryPointerAtScreenPosition(&lcd, 0, 0);
+  						RGB_LCD_WriteStringToMemory(&lcd, "MAIN MENU");
   					}
   					else if(flip == true){
   						// print upside down text for the main menu
@@ -176,17 +190,17 @@ int main(void)
 
   				case MENU_TEMP: {
   					// clear display
-  					RGB_LCD_Clear(&lcd);
+  					RGB_LCD_ClearScreen(&lcd);
 
   					// measure temperature
-  					t_temp = rtd_read_temperature_f();
+  					t_temp = rtd_read_temperature_f(adcBuffer);
 
   					if (flip == false){
   						// print right side up text for the temperature screen
-  						RGB_LCD_SetCursor(&lcd, 0, 0);
-  						RGB_LCD_Printf(&lcd, "TEMP: %.0f F", t_temp);
-  						RGB_LCD_SetCursor(&lcd, 0, 1);
-  						RGB_LCD_Print(&lcd,"HIT LEFT TO EXIT");
+  						RGB_LCD_SetMemoryPointerAtScreenPosition(&lcd, 0, 0);
+  						RGB_LCD_WriteFormattedStringToMemory(&lcd, "TEMP: %.0f F", t_temp);
+  						RGB_LCD_SetMemoryPointerAtScreenPosition(&lcd, 0, 1);
+  						RGB_LCD_WriteStringToMemory(&lcd,"HIT LEFT TO EXIT");
   					}
   					else if(flip == true){
   						// print upside down text for the temperature screen
@@ -200,17 +214,17 @@ int main(void)
 
   				case MENU_FREQ: {
   					// clear display
-  					RGB_LCD_Clear(&lcd);
+  					RGB_LCD_ClearScreen(&lcd);
 
   					// measure frequency
-  					freq = measure_frequency();
+  					freq = measure_frequency(adcBuffer);
 
   					if (flip == false){
   						// print right side up text for the frequency screen
-  						RGB_LCD_SetCursor(&lcd, 0, 0);
-  						RGB_LCD_Printf(&lcd, "FREQ: %.0f Hz", freq);
-  						RGB_LCD_SetCursor(&lcd, 0, 1);
-  						RGB_LCD_Print(&lcd,"HIT LEFT TO EXIT");
+  						RGB_LCD_SetMemoryPointerAtScreenPosition(&lcd, 0, 0);
+  						RGB_LCD_WriteFormattedStringToMemory(&lcd, "FREQ: %.0f Hz", freq);
+  						RGB_LCD_SetMemoryPointerAtScreenPosition(&lcd, 0, 1);
+  						RGB_LCD_WriteStringToMemory(&lcd,"HIT LEFT TO EXIT");
   					}
   					else if(flip == true){
   						// print upside down text for the frequency screen
@@ -293,17 +307,17 @@ static void MX_ADC_Init(void)
   hadc.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
   hadc.Init.Resolution = ADC_RESOLUTION_12B;
   hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   hadc.Init.LowPowerAutoWait = ADC_AUTOWAIT_DISABLE;
   hadc.Init.LowPowerAutoPowerOff = ADC_AUTOPOWEROFF_DISABLE;
   hadc.Init.ChannelsBank = ADC_CHANNELS_BANK_A;
-  hadc.Init.ContinuousConvMode = DISABLE;
+  hadc.Init.ContinuousConvMode = ENABLE;
   hadc.Init.NbrOfConversion = 1;
   hadc.Init.DiscontinuousConvMode = DISABLE;
   hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc.Init.DMAContinuousRequests = DISABLE;
+  hadc.Init.DMAContinuousRequests = ENABLE;
   if (HAL_ADC_Init(&hadc) != HAL_OK)
   {
     Error_Handler();
@@ -313,7 +327,7 @@ static void MX_ADC_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_4CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_384CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -392,6 +406,22 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -454,8 +484,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

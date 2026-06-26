@@ -4,30 +4,13 @@
 
 extern ADC_HandleTypeDef hadc;
 
-void ADC_ButtonInit(void) {
-    HAL_ADC_Start(&hadc);
-}
-
-Button GetButton(void) {
-    uint32_t sum = 0;
-
-    HAL_ADC_Start(&hadc);
-    HAL_ADC_PollForConversion(&hadc, HAL_MAX_DELAY);
-
-    // Take 10 samples
-    for (int i = 0; i < 10; i++) {
-        sum += HAL_ADC_GetValue(&hadc);
-        HAL_Delay(2); // small delay to avoid reading the exact same sample
-    }
-
-    // Calculate average raw ADC value
-    uint32_t avg = sum / 10;
+Button GetButton(uint32_t adcBuffer[]) {
 
     // determine button push
-    if (avg < 50) return BUTTON_RIGHT;
-    else if (avg < 1100) return BUTTON_UP;
-    else if (avg < 1900) return BUTTON_DOWN;
-    else if (avg < 2700) return BUTTON_LEFT;
-    else if (avg < 3400) return BUTTON_SELECT;
+    if (adcBuffer[0] < 50) return BUTTON_RIGHT;
+    else if (adcBuffer[0] < 1100) return BUTTON_UP;
+    else if (adcBuffer[0] < 1900) return BUTTON_DOWN;
+    else if (adcBuffer[0] < 2700) return BUTTON_LEFT;
+    else if (adcBuffer[0] < 3400) return BUTTON_SELECT;
     else return NONE;
 }

@@ -9,7 +9,7 @@ void signal_input_init(void)
 
 }
 
-float measure_frequency(void)
+float measure_frequency(uint32_t adcBuffer[])
 {
 	//stub code
 	return 50.0f;

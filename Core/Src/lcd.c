@@ -65,16 +65,16 @@ void RGB_LCD_Init(RGB_LCD_HandleTypeDef *lcd) {
  *  Clears all characters from the display and resets the cursor to the home
  *  position (top-left corner).
 */
-void RGB_LCD_Clear(RGB_LCD_HandleTypeDef *lcd) {
+void RGB_LCD_ClearScreen(RGB_LCD_HandleTypeDef *lcd) {
     lcd_send_command(lcd, 0x01);
     HAL_Delay(2);
 }
 
 /*
- *  Moves the cursor to a specific row and column. This determines where the
- *  next printed character will appear.
+ *  Moves the memory pointer to a set position on the screen, based on col and row arguments.
+ *  Use this before you write data to the screen in order to write at the correct position.
 */
-void RGB_LCD_SetCursor(RGB_LCD_HandleTypeDef *lcd, uint8_t col, uint8_t row) {
+void RGB_LCD_SetMemoryPointerAtScreenPosition(RGB_LCD_HandleTypeDef *lcd, uint8_t col, uint8_t row) {
     const uint8_t row_offsets[] = {0x00, 0x40, 0x14, 0x54};
     lcd_send_command(lcd, 0x80 | (col + row_offsets[row]));
 }
@@ -97,8 +97,13 @@ void RGB_LCD_SetRGB(RGB_LCD_HandleTypeDef *lcd, uint8_t r, uint8_t g, uint8_t b)
 /*
  *  Prints a string to the display at the current cursor position by sending
  *  each character sequentially.
+ *
+ *  WARNING: When trying to write custom characters to memory (numbers 0 - 7),
+ *  remember that C treats a 0 as the null-terminator (i.e. end of string).
+ *  It may be easier to write your own function to send only ONE byte to the LCD,
+ *  to avoid this behavior when writing custom characters.
 */
-void RGB_LCD_Print(RGB_LCD_HandleTypeDef *lcd, const char *str) {
+void RGB_LCD_WriteStringToMemory(RGB_LCD_HandleTypeDef *lcd, const char *str) {
     while (*str) {
         lcd_send_data(lcd, *str++);
     }
@@ -108,15 +113,22 @@ void RGB_LCD_Print(RGB_LCD_HandleTypeDef *lcd, const char *str) {
  *  Works like printf() in C, formatting text with variables before printing it
  *  to the LCD. Useful for displaying sensor readings, counters, or other
  *  dynamic data.
+ *
+ *
+ *  WARNING: When trying to write custom characters to memory (numbers 0 - 7),
+ *  remember that C treats a 0 as the null-terminator (i.e. end of string).
+ *  It may be easier to write your own function to send only ONE byte to the LCD,
+ *  to avoid this behavior when writing custom characters.
+ *
 */
-void RGB_LCD_Printf(RGB_LCD_HandleTypeDef *lcd, const char *fmt, ...) {
+void RGB_LCD_WriteFormattedStringToMemory(RGB_LCD_HandleTypeDef *lcd, const char *fmt, ...) {
     char buffer[64]; // Adjust size for your LCD’s needs
     va_list args;
     va_start(args, fmt);
     vsnprintf(buffer, sizeof(buffer), fmt, args); // format safely into buffer
     va_end(args);
 
-    RGB_LCD_Print(lcd, buffer);
+    RGB_LCD_WriteStringToMemory(lcd, buffer);
 }
 
 

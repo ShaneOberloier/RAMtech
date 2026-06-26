@@ -3,7 +3,7 @@
 /Release/
 
 # Ignore STM32CubeIDE metadata caches
-/.settings/
+/.settings
 /.metadata/
 /.project
 /.cproject
@@ -11,3 +11,6 @@
 # Ignore OS-specific files
 .DS_Store
 Thumbs.db
+
+# Ignore this file that for some reason does not want to be ignored by gitignore
+.settings/stm32cubeide.project.prefs
